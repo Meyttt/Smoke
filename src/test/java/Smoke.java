@@ -1,5 +1,6 @@
 import org.junit.Assert;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -7,6 +8,7 @@ import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -15,7 +17,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +31,7 @@ public class Smoke {
     ChromeDriver chromeDriver;
     Config config = new Config("config.properties");
     WebDriverWait wait;
+    File file = new File("data/docs");
 
     public Smoke() throws IOException {
     }
@@ -36,7 +41,7 @@ public class Smoke {
         System.setProperty("webdriver.chrome.driver", "data/chromedriver.exe");
         HashMap<String, Object> chromePrefs = new HashMap<String, Object>();
         chromePrefs.put("profile.default_content_settings.popups", 0);
-        chromePrefs.put("download.default_directory", (new File("data/docs")).getAbsolutePath());
+        chromePrefs.put("download.default_directory", (file.getAbsolutePath()));
         chromePrefs.put("plugins.plugins_disabled", new String[] {
                 "Adobe Flash Player",
                 "Chrome PDF Viewer"
@@ -50,7 +55,14 @@ public class Smoke {
         wait = new WebDriverWait(chromeDriver, 15);
     }
 
-    @Test
+    @BeforeClass@AfterClass
+    void cleanDirectory(){
+       File[] files=file.listFiles();
+       for(int i=0;i<files.length;i++){
+           files[i].delete();
+       }
+    }
+    @Test(description = "Просмотр страниц и ссылок в открытой части портала")
     void PageAndLinks(){
         //наличие надписи
         chromeDriver.get(config.get("url"));
@@ -78,7 +90,7 @@ public class Smoke {
         //cкачиваем файл
         WebElement webElement =chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[4]/ul[2]/li[1]/div/a"));
         Assert.assertEquals(webElement.findElement(By.tagName("h4")).getText(),"Абоненты ШПД (I квартал 2016 года)");
-        webElement.click(); //TODO: добавить проверку, скачплось ли
+        webElement.click(); //TODO: добавить проверку, скачалось ли
         //Переходим на страницу "События и документы"
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a[ng-reflect-router-link='events']")));
         chromeDriver.findElement(By.cssSelector("a[ng-reflect-router-link='events']")).click();
@@ -112,6 +124,47 @@ public class Smoke {
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div/div/ul/li[1]/div/span[1]")).getText().contains("125375, г. Москва,"));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div/div/ul/li[1]/div/span[2]")).getText().contains("ул. Тверская, д. 7"));
     }
+    @Test(description = "Просмотр форм для сдачи при вводе лицензии")
+    void numberOfForms() throws InterruptedException {
+        //переход на страницу и ожидание загрузки
+        chromeDriver.get(config.get("url"));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("licNumber")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("selectService")));
+        //раскрытие меню
+        while (chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).size()==0){
+            chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/a/div/b")).click();
+            while(!chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).get(0).isDisplayed()) {
+                chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/a/div/b")).click();
+                chromeDriver.manage().timeouts().implicitlyWait(100, TimeUnit.MILLISECONDS);
+            }
+        }
+        //ввод номера лицензии
+        chromeDriver.findElement(By.xpath("//*[@id=\"licNumber\"]")).sendKeys(config.get("licenseNumber"));
+        //выбор услуги из выпадающего списка
+        List<WebElement> services = chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]"));
+        for(WebElement webElement:services){
+            if(webElement.getText().equals("Телематические услуги связи тест")){
+                clicking:while(true){
+                    try {
+                        webElement.click();
+                        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")));
+                        break clicking;
+                    }catch (org.openqa.selenium.TimeoutException e){
+                        continue clicking;
+                    }
+                }
+            }
+        }
+
+        //отправка данных
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[1]/h3")));
+        //проверка общего числа форм.
+        //todo: проверять не только общее число форм, но и число в каждой группе.
+        Assert.assertEquals(chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[.]/div[2]/span")).size(),10);
+
+    }
+
     @AfterClass
     public void closeDriver(){
         if(chromeDriver!=null){
