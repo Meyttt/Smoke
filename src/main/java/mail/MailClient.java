@@ -20,6 +20,7 @@ public class MailClient {
     public static void checkEmail(String host, String name, String password) {
         try {
             Thread.sleep(5000);
+            //TODO: добавить ошибку, если последнее письмо уже прочитано!
             Properties props = new Properties();
             props.put("mail.smtp.host", "mail.12.voskhod.local");
             props.put("mail.store.protocol", "imap");
