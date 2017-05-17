@@ -2,7 +2,7 @@ import java.io.*;
 import java.util.Properties;
 
 public class Config {
-    public static Properties prop;
+    public Properties prop;
 
     public Config(String filename) throws IOException {
         this.prop = initProperties(filename);
@@ -11,8 +11,8 @@ public class Config {
     public String get(String key)  {
         String val = prop.getProperty(key);
         try {
-            return new String(val.getBytes("ISO-8859-1"), "UTF-8");
-        } catch (UnsupportedEncodingException e) {
+            return new String(val.getBytes("ISO-8859-1"), "windows-1251");
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return val;

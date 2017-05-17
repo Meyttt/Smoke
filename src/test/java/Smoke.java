@@ -1,26 +1,24 @@
+import mail.MailClient;
 import org.junit.Assert;
 import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+import sql.SqlManager;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -30,6 +28,8 @@ public class Smoke {
 
     ChromeDriver chromeDriver;
     Config config = new Config("config.properties");
+    Config userConfig = new Config("userInfo.properties");
+    Config databaseConfig = new Config("database.properties");
     WebDriverWait wait;
     File file = new File("data/docs");
 
@@ -162,9 +162,67 @@ public class Smoke {
         //проверка общего числа форм.
         //todo: проверять не только общее число форм, но и число в каждой группе.
         Assert.assertEquals(chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[.]/div[2]/span")).size(),10);
-
     }
 
+    @Test
+    public void userActivation() throws InterruptedException {
+        //Переход в Армаду
+        chromeDriver.get(
+                config.get("urlArmada"));
+        chromeDriver.manage().timeouts().implicitlyWait(3,TimeUnit.SECONDS);
+        //ввод учетных данных при необходимости
+        if(chromeDriver.findElements(By.xpath("//*[@id=\"username\"]")).size()>0){
+            chromeDriver.findElement(By.xpath("//*[@id=\"username\"]")).sendKeys(config.get("armadaLog"));
+            chromeDriver.findElement(By.xpath("//*[@id=\"password\"]")).sendKeys(config.get("armadaPass"));
+            chromeDriver.findElement(By.xpath("/html/body/div[3]/div/div/form/fieldset/div[3]/div[2]/button")).click();
+        }
+        //Переход на страницу "Пользователи"
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div[1]/div[1]/h2")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[2]/a")).click();
+        List<WebElement> dictionaries = chromeDriver.findElements(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[2]/ul/li[.]/a"));
+        for(WebElement webElement:dictionaries){
+            if(webElement.getText().equals("Пользователи")){
+                webElement.click();
+//                wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[1]/div/h2")),"Пользователи"));
+                wait.until(ExpectedConditions.elementToBeClickable(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/nav/a[1]")));
+            }
+        }
+        chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/nav/a[1]")).click();
+        //удаление из бд пользователей, имеющих е-меил, используемый для регистрации
+        SqlManager sqlManager = new SqlManager(databaseConfig.get("url"),databaseConfig.get("name"),databaseConfig.get("password"));
+        sqlManager.changeUser(userConfig.get("mail"));
+//        chromeDriver.findElement(By.xpath("/html/body/div[3]/div/div/div[2]/div/div[1]/nav/a[1]")).click();
+        //открытие окна "Создание пользователя"
+        wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[1]/h4")),"Создание пользователя"));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[1]/div/input")));
+        //Ввод пользовательских данных
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[1]/div/input")).sendKeys(userConfig.get("login"));
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[2]/div/input")).sendKeys(userConfig.get("name"));
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[3]/div/input")).sendKeys(userConfig.get("mail"));
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[4]/div/input")).sendKeys(userConfig.get("snils"));
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[6]/div/input")).sendKeys(userConfig.get("appointment"));
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[7]/div/input")).sendKeys(userConfig.get("phone"));
+        Thread.sleep(100);
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).click();
+        Thread.sleep(100);
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).click();
+        Thread.sleep(100);
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(userConfig.get("operator"));
+        Thread.sleep(100);
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.DOWN);
+        Thread.sleep(100);
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.DOWN);
+        Thread.sleep(100);
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.ENTER);
+        Thread.sleep(100);
+        //Отправка пользовательских данных
+        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[3]/button[1]")).click();
+        //todo: Проверить, что пользователь создан
+        MailClient.checkEmail("mail."+userConfig.get("mail").split("@")[1],userConfig.get("mail").split("@")[0],userConfig.get("mailpassword"));
+        chromeDriver.get(MailClient.getUrl());
+        Thread.sleep(20000);
+
+    }
     @AfterClass
     public void closeDriver(){
         if(chromeDriver!=null){
