@@ -5,6 +5,7 @@ import sql.User;
 import javax.mail.*;
 import java.util.EnumSet;
 import java.util.Properties;
+
 import org.nibor.autolink.LinkExtractor;
 import org.nibor.autolink.LinkSpan;
 import org.nibor.autolink.LinkType;
@@ -15,47 +16,39 @@ import org.nibor.autolink.LinkType;
  */
 public class MailClient {
     private static String url;
+
     public static void checkEmail(String host, String name, String password) {
         try {
-//            Thread.sleep(5000);
+            Thread.sleep(5000);
             Properties props = new Properties();
             props.put("mail.smtp.host", "mail.12.voskhod.local");
             props.put("mail.store.protocol", "imap");
-            int i=0;
-            waiting:while (true) {
-                if(i>20){
-                    //TODO: сообщение об ошибке!
-                    break waiting;
+            int i = 0;
+            Session session = Session.getInstance(props, null);
+            Store store = session.getStore("imap");
+            store.connect(host, name, password);
+            Thread.sleep(100);
+            Folder inbox = store.getFolder("INBOX");
+            inbox.open(Folder.READ_ONLY);
+            Message response = inbox.getMessage(inbox.getMessageCount());
+            if (!response.getFlags().contains(Flags.Flag.SEEN)) {
+                String content;
+                if (response.getContent().getClass().equals(String.class)) {
+                    content = (String) response.getContent();
+                } else {
+                    Multipart mp = (Multipart) response.getContent();
+                    BodyPart bp = mp.getBodyPart(0);
+                    content = (String) bp.getContent();
                 }
-                Thread.sleep(500);
-                Session session = Session.getInstance(props, null);
-                Store store = session.getStore("imap");
-                store.connect(host, name, password);
-                Folder inbox = store.getFolder("INBOX");
-                inbox.open(Folder.READ_ONLY);
-                Message response = inbox.getMessage(inbox.getMessageCount());
-                if (!response.getFlags().contains(Flags.Flag.SEEN)) {
-                    String content;
-                    if (response.getContent().getClass().equals(String.class)) {
-                        content = (String) response.getContent();
-                    } else {
-                        Multipart mp = (Multipart) response.getContent();
-                        BodyPart bp = mp.getBodyPart(0);
-                        content = (String) bp.getContent();
-                    }
 
-                    LinkExtractor linkExtractor = LinkExtractor.builder()
-                            .linkTypes(EnumSet.of(LinkType.URL))
-                            .build();
-                    Iterable<LinkSpan> links = linkExtractor.extractLinks(content);
-                    LinkSpan link = links.iterator().next();
-                    url = content.substring(link.getBeginIndex(), link.getEndIndex());
-                }else{
-                    i++;
-                    continue waiting;
-                }
+                LinkExtractor linkExtractor = LinkExtractor.builder()
+                        .linkTypes(EnumSet.of(LinkType.URL))
+                        .build();
+                Iterable<LinkSpan> links = linkExtractor.extractLinks(content);
+                LinkSpan link = links.iterator().next();
+                url = content.substring(link.getBeginIndex(), link.getEndIndex());
             }
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

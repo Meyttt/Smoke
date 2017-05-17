@@ -202,25 +202,37 @@ public class Smoke {
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[4]/div/input")).sendKeys(userConfig.get("snils"));
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[6]/div/input")).sendKeys(userConfig.get("appointment"));
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[7]/div/input")).sendKeys(userConfig.get("phone"));
-        Thread.sleep(100);
+        Thread.sleep(300);
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).click();
-        Thread.sleep(100);
+        Thread.sleep(300);
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).click();
-        Thread.sleep(100);
+        Thread.sleep(300);
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(userConfig.get("operator"));
-        Thread.sleep(100);
+        Thread.sleep(500);
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.DOWN);
-        Thread.sleep(100);
+        Thread.sleep(300);
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.DOWN);
-        Thread.sleep(100);
+        Thread.sleep(300);
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.ENTER);
-        Thread.sleep(100);
+        Thread.sleep(300);
         //Отправка пользовательских данных
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[3]/button[1]")).click();
         //todo: Проверить, что пользователь создан
         MailClient.checkEmail("mail."+userConfig.get("mail").split("@")[1],userConfig.get("mail").split("@")[0],userConfig.get("mailpassword"));
         chromeDriver.get(MailClient.getUrl());
-        Thread.sleep(20000);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"password\"]")));
+        chromeDriver.findElement(By.id("password")).sendKeys(userConfig.get("password"));
+        chromeDriver.findElement(By.id("repassword")).sendKeys(userConfig.get("password"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"bg_create_pass\"]/div[2]/div/div/div/div/form/div[2]/button")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"bg_create_pass\"]/div[2]/div/div/div/div/form/div[2]/button")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"bg_create_pass\"]/div[2]/div/div/div/div/div/a")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"bg_create_pass\"]/div[2]/div/div/div/div/div/a")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"email\"]")));
+        chromeDriver.findElement(By.id("email")).sendKeys(userConfig.get("mail"));
+        chromeDriver.findElement(By.id("password")).sendKeys(userConfig.get("password"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"bg_authorization\"]/div[1]/div/div/div[3]/div/form/div[4]/button")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"bg_authorization\"]/div[1]/div/div/div[3]/div/form/div[4]/button")).click();
+        wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/h2")),"Мои формы"));
 
     }
     @AfterClass
