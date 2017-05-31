@@ -18,6 +18,7 @@ import sql.SqlManager;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -54,6 +55,7 @@ public class Smoke {
         cap.setCapability(ChromeOptions.CAPABILITY, options);
         chromeDriver = new ChromeDriver(cap);
         wait = new WebDriverWait(chromeDriver, 15);
+        wait.pollingEvery(100,TimeUnit.MILLISECONDS);
     }
 
     @BeforeClass@AfterClass
@@ -98,7 +100,7 @@ public class Smoke {
         //На странице присутствуют строки "События", "Письмо Минкомсвязи России о порядке предоставления статистической отчетности"
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.partialLinkText("События")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[2]/ul/li[1]/div/div[2]/p")));
-        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[2]/ul/li[1]/div/div[2]/p")).getText().contains("Письмо Минкомсвязи России о порядке предоставления статистической отчетности"));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[2]/ul/li[1]/div/div[2]/p")).getText().contains("Информационное письмо Минкомсвязи России о недопустимости использования посреднических услуг."));
         //Переходим на вкладку "Документы"
         chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[1]/div/div/div/ul/li[2]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[3]/ul/li[1]/div/a")));
@@ -125,7 +127,7 @@ public class Smoke {
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div/div/ul/li[1]/div/span[1]")).getText().contains("125375, г. Москва,"));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div/div/ul/li[1]/div/span[2]")).getText().contains("ул. Тверская, д. 7"));
         try {
-            Thread.sleep(2000);
+            Thread.sleep(10000);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -137,16 +139,18 @@ public class Smoke {
         chromeDriver.get(config.get("url"));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("licNumber")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("selectService")));
+        //ввод номера лицензии
+        chromeDriver.findElement(By.xpath("//*[@id=\"licNumber\"]")).sendKeys(config.get("licenseNumber"));
         //раскрытие меню
         while (chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).size()==0){
             chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/a/div/b")).click();
-            while(!chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).get(0).isDisplayed()) {
+
+            while(!chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).isDisplayed()) {
                 chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/a/div/b")).click();
                 chromeDriver.manage().timeouts().implicitlyWait(100, TimeUnit.MILLISECONDS);
             }
         }
-        //ввод номера лицензии
-        chromeDriver.findElement(By.xpath("//*[@id=\"licNumber\"]")).sendKeys(config.get("licenseNumber"));
+
         //выбор услуги из выпадающего списка
         List<WebElement> services = chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]"));
         for(WebElement webElement:services){
@@ -168,11 +172,11 @@ public class Smoke {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[1]/h3")));
         //проверка общего числа форм.
         //todo: проверять не только общее число форм, но и число в каждой группе.
-        Assert.assertEquals(chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[.]/div[2]/span")).size(),10);
+        Assert.assertEquals(chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[.]/div[2]/span")).size(),12);
     }
 
-    @Test
-    public void userActivation() throws InterruptedException {
+    @Test(description = "")
+    public void userActivation()  {
         //Переход в Армаду
         chromeDriver.get(
                 config.get("urlArmada"));
@@ -197,6 +201,7 @@ public class Smoke {
         chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/nav/a[1]")).click();
         //удаление из бд пользователей, имеющих е-меил, используемый для регистрации
         SqlManager sqlManager = new SqlManager(databaseConfig.get("url"),databaseConfig.get("name"),databaseConfig.get("password"));
+        sqlManager.deleteOperatorHistory(userConfig.get("mail"));
         sqlManager.changeUser(userConfig.get("mail"));
 //        chromeDriver.findElement(By.xpath("/html/body/div[3]/div/div/div[2]/div/div[1]/nav/a[1]")).click();
         //открытие окна "Создание пользователя"
@@ -209,19 +214,47 @@ public class Smoke {
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[4]/div/input")).sendKeys(userConfig.get("snils"));
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[6]/div/input")).sendKeys(userConfig.get("appointment"));
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[7]/div/input")).sendKeys(userConfig.get("phone"));
-        Thread.sleep(300);
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).click();
-        Thread.sleep(300);
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).click();
-        Thread.sleep(300);
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(userConfig.get("operator"));
-        Thread.sleep(500);
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.DOWN);
-        Thread.sleep(300);
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.DOWN);
-        Thread.sleep(300);
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(Keys.ENTER);
-        Thread.sleep(300);
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         //Отправка пользовательских данных
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[3]/button[1]")).click();
         //todo: Проверить, что пользователь создан
@@ -242,8 +275,8 @@ public class Smoke {
         wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/h2")),"Мои формы"));
 
     }
-    @Test(description = "Просмотр списка форм ЛК")
-    public void reviewList() {
+    @Test(description = "Просмотр списка форм ЛК",dependsOnMethods = "userActivation")
+    public void reviewList()  {
         //Переход на страницу с формой входа в лк
         chromeDriver.get(config.get("urlLK"));
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email")));
@@ -293,6 +326,21 @@ public class Smoke {
         Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[3]/div[1]/div/p")).getText(),"Москва, Город");
         Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[4]/div[1]/div/p")).getText(),"Адыгея, Республика");
 
+    }
+    @Test(description = "",dependsOnMethods = "reviewList")
+    public void sendEmptyForm(){
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[4]/div[2]/div/p/a")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div/div/div/div/h3")));
+        chromeDriver.findElement(By.id("author")).sendKeys("Исполнитель");
+        chromeDriver.findElement(By.id("authorEmail")).sendKeys(userConfig.get("mail"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[1]/button")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[1]/button")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("ng2-toast > div > div.toast-text")));
+        wait.until(ExpectedConditions.numberOfElementsToBe(By.cssSelector("ng2-toast"),2));
+        List<WebElement> popups = chromeDriver.findElements(By.cssSelector("ng2-toast"));
+        String sum = popups.get(0).getText()+popups.get(1).getText();
+        Assert.assertTrue(sum.contains("Сохранение"));
+        Assert.assertTrue(sum.contains("Проверка формы"));
 
 
     }

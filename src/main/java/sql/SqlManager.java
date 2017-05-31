@@ -202,4 +202,29 @@ public class SqlManager {
             }
         }
     }
+    public void deleteOperatorHistory(String email){
+        LinkedList<User> users = this.selectUsersByEmail(email);
+        for(User user:users){
+            Statement statement = null;
+            String request = "update t_report_form_var set status = 'DELETED' where operator_id in (select operator_id from t_user where id= "+user.getId()+")" +
+                    " and status != 'DELETED'";
+            try{
+                statement = connection.createStatement();
+                statement.execute(request);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+            Statement statement2 = null;
+            String request2 = "update t_report_form_var set status = 'DELETED' where operator_id in ( SELECT id FROM t_operator where parent_id in ( select operator_id from t_user where id= "+user.getId()+"))" +
+                    " and status != 'DELETED'";
+            try{
+                statement2 = connection.createStatement();
+                statement2.execute(request2);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
 }
