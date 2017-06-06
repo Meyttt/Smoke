@@ -1,9 +1,6 @@
 import mail.MailClient;
 import org.junit.Assert;
-import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.SearchContext;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.CapabilityType;
@@ -17,6 +14,9 @@ import sql.SqlManager;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,6 +50,7 @@ public class Smoke {
         });
         ChromeOptions options = new ChromeOptions();
         options.setExperimentalOption("prefs", chromePrefs);
+        options.addExtensions(new File("data/cp.crx"));
         DesiredCapabilities cap = DesiredCapabilities.chrome();
         cap.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);
         cap.setCapability(ChromeOptions.CAPABILITY, options);
@@ -131,6 +132,7 @@ public class Smoke {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        //todo
         Assert.assertEquals(file.listFiles().length,2);
     }
     @Test(description = "Просмотр форм для сдачи при вводе лицензии")
@@ -144,34 +146,52 @@ public class Smoke {
         //раскрытие меню
         while (chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).size()==0){
             chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/a/div/b")).click();
-
-            while(!chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).isDisplayed()) {
-                chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/a/div/b")).click();
-                chromeDriver.manage().timeouts().implicitlyWait(100, TimeUnit.MILLISECONDS);
+            try {
+                chromeDriver.manage().timeouts().implicitlyWait(500,TimeUnit.MILLISECONDS);
+                while (!chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).isDisplayed()) {//todo: org.openqa.selenium.StaleElementReferenceException: stale element reference: element is not attached to the page document
+                    chromeDriver.findElement(By.xpath("//*[@id=\"selectService_chosen\"]/a/div/b")).click();
+                    chromeDriver.manage().timeouts().implicitlyWait(100, TimeUnit.MILLISECONDS);
+                }
+            }catch (StaleElementReferenceException e){
+                e.printStackTrace();//todo: надо ли?
+//                System.err.println("Not ref, info:");
+//                System.out.println(chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]")).size());
             }
         }
 
         //выбор услуги из выпадающего списка
-        List<WebElement> services = chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]"));
-        for(WebElement webElement:services){
-            if(webElement.getText().equals("Телематические услуги связи тест")){
-                clicking:while(true){
-                    try {
-                        webElement.click();
-                        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")));
-                        break clicking;
-                    }catch (org.openqa.selenium.TimeoutException e){
-                        continue clicking;
+        String webElementText=null;
+        circle:while(true) {
+            try {
+                List<WebElement> services = chromeDriver.findElements(By.xpath("//*[@id=\"selectService_chosen\"]/div/ul/li[.]"));
+                for (WebElement webElement : services) {
+                    if (webElement.getText().equals("Телематические услуги связи тест")) { //org.openqa.selenium.StaleElementReferenceException: stale element reference: element is not attached to the page document
+                        clicking:
+                        while (true) {
+                            try {
+                                webElement.click();
+                                wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")));
+                                wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")));
+                                break clicking;
+                            } catch (org.openqa.selenium.TimeoutException e) {
+                                continue clicking;
+                            }
+                        }
                     }
                 }
+                break circle;
+            } catch (StaleElementReferenceException e){
+                continue circle;
             }
-        }
 
+        }
         //отправка данных
-        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")).click();
+//        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[1]/div/div/div/div/button[1]")).click(); //todo: org.openqa.selenium.WebDriverException: unknown error: Element <button class="ln_start discover_btn" disabled="">...</button> is not clickable at point (455, 648). Other element would receive the click: <li class="active-result" data-option-array-index="4">...</li>
+
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[1]/h3")));
         //проверка общего числа форм.
-        //todo: проверять не только общее число форм, но и число в каждой группе.
+
         Assert.assertEquals(chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[.]/div[2]/span")).size(),12);
     }
 
@@ -203,7 +223,6 @@ public class Smoke {
         SqlManager sqlManager = new SqlManager(databaseConfig.get("url"),databaseConfig.get("name"),databaseConfig.get("password"));
         sqlManager.deleteOperatorHistory(userConfig.get("mail"));
         sqlManager.changeUser(userConfig.get("mail"));
-//        chromeDriver.findElement(By.xpath("/html/body/div[3]/div/div/div[2]/div/div[1]/nav/a[1]")).click();
         //открытие окна "Создание пользователя"
         wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[1]/h4")),"Создание пользователя"));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[1]/div/input")));
@@ -231,7 +250,16 @@ public class Smoke {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(userConfig.get("operator"));
+        while (true){
+            chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).clear();
+            chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).sendKeys(userConfig.get("operator"));
+            if(chromeDriver.findElements(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).size()>0){
+                if(chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[2]/form/fieldset/div[9]/div/span[1]/input[2]")).getCssValue("display").equals("block")){
+                    break;
+                }
+            }
+
+        }
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
@@ -257,10 +285,10 @@ public class Smoke {
         }
         //Отправка пользовательских данных
         chromeDriver.findElement(By.xpath("/html/body/div[5]/div/div/div[3]/button[1]")).click();
-        //todo: Проверить, что пользователь создан
         MailClient.checkEmail("mail."+userConfig.get("mail").split("@")[1],userConfig.get("mail").split("@")[0],userConfig.get("mailpassword"));
         chromeDriver.get(MailClient.getUrl());
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"password\"]")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"password\"]")));//todo:org.openqa.selenium.TimeoutException: Expected condition failed: waiting for presence of element located by: By.xpath: //*[@id="password"] (tried for 15 second(s) with 100 MILLISECONDS interval)
+
         chromeDriver.findElement(By.id("password")).sendKeys(userConfig.get("password"));
         chromeDriver.findElement(By.id("repassword")).sendKeys(userConfig.get("password"));
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"bg_create_pass\"]/div[2]/div/div/div/div/form/div[2]/button")));
@@ -334,6 +362,7 @@ public class Smoke {
         chromeDriver.findElement(By.id("author")).sendKeys("Исполнитель");
         chromeDriver.findElement(By.id("authorEmail")).sendKeys(userConfig.get("mail"));
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[1]/button")));
+        Date date = new Date();
         chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[1]/button")).click();
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("ng2-toast > div > div.toast-text")));
         wait.until(ExpectedConditions.numberOfElementsToBe(By.cssSelector("ng2-toast"),2));
@@ -341,6 +370,150 @@ public class Smoke {
         String sum = popups.get(0).getText()+popups.get(1).getText();
         Assert.assertTrue(sum.contains("Сохранение"));
         Assert.assertTrue(sum.contains("Проверка формы"));
+        wait.until(ExpectedConditions.numberOfElementsToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[4]/div[2]/ul/li[.]"),2));
+        Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[4]/div[2]/ul/li[1]/div[1]/div[2]/p")).getText(),"Обновлен черновик");
+        Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[4]/div[2]/ul/li[2]/div[1]/div[2]/p")).getText(),"Создан черновик");
+        //todo формат дат? КОСТЫЫЫЫЛЬ
+        String updateDate = chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[3]/div/span")).getText().replace("июн", " ").replace(" ","");
+        SimpleDateFormat siteDate = new SimpleDateFormat("ddyyyyHH:mm");
+        String realDate = siteDate.format(date);
+        try {
+            Assert.assertEquals(updateDate, realDate);
+        }catch (AssertionError e){
+            try {
+                if(!(Math.abs(siteDate.parse(updateDate).getTime()-date.getTime())<60000)){
+                    throw e;
+                }
+            } catch (ParseException e1) {
+                e1.printStackTrace();
+            }
+        }
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]/span")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]/span")).click();
+        wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("//*[@id=\"gl_form2\"]/div[2]/table/tbody/tr[2]/td[4]/p")),"Величина показателя"));
+        List<WebElement> inputs=chromeDriver.findElements(By.xpath("//*[@id=\"gl_form2\"]/div[2]/table/tbody/tr[.]/td/input"));
+        int i=0;
+        for(WebElement webElement: inputs){
+            Assert.assertEquals(webElement.getAttribute("ng-reflect-model"),"0");
+        }
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[2]/button")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[2]/button")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[1]")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[1]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span")));
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span"),"Принят"));
+        Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span")).getText(),"Принят");
+
+    }
+    @Test(dependsOnMethods = "sendEmptyForm")
+    public void sendWithWarnings(){
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div/div/div/div/div")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div/div/div/div/div")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[3]/div[2]/div/p/a")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[3]/div[2]/div/p/a")).click();
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[1]/p"),"Шаг 1"));
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[1]/span"),"Данные об организации"));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"titul_form\"]/div[1]/div/div[1]/div/div")).getText().contains("Наименование предприятия (структурного подразделения)"));
+        Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"titul_form\"]/div[5]/div/h3")).getText(),"Контактные данные");
+        Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"author\"]")).getCssValue("border-bottom-color"),"rgba(255, 0, 0, 1)");
+        Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"authorEmail\"]")).getCssValue("border-bottom-color"),"rgba(255, 0, 0, 1)");
+        Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span")).getText(),"Надо сдать");
+        chromeDriver.findElement(By.id("author")).sendKeys("Исполнитель");
+        chromeDriver.findElement(By.id("authorEmail")).sendKeys(userConfig.get("mail"));
+        chromeDriver.findElement(By.xpath("//*[@id=\"ogrn\"]")).clear();
+        chromeDriver.findElement(By.xpath("//*[@id=\"ogrn\"]")).sendKeys("1127028000199");
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"0101.03\"]")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"0101.03\"]")).sendKeys("100");
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[1]/button")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[1]/button")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[5]/h3")));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[5]/h3")).getText().contains("Ошибки при заполнении"));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[5]/div/ul/li/div/div/div/div/div/div[2]/div[2]/div/p")).getText().
+                contains("Правило не пройдено: Сумма значений ячеек по графе 03 строк 0103, 0111 должна быть равна значению ячейки по графе 03 по строке 0101"));
+
+//        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/h3")));//todo:org.openqa.selenium.TimeoutException: Expected condition failed: waiting for presence of element located by: By.xpath: //*[@id="wrapper"]/ng-component/ng-component/div[3]/div[6]/h3 (tried for 15 second(s) with 100 MILLISECONDS interval)
+
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/h3")).getText().contains("Предупреждение"));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/ul/li/div/div/div/div/div/div[2]/div[2]/div/p")).getText().contains("Ячейка : ОГРН (1127028000199) не совпал со значением в базе данных (1127028000165)." ));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/ul/li/div/div/div/div/div/div[2]/div[2]/div/p")).getText().contains("Найденный оператор: НИД12ТЕСТ_Г."));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span")).getText().contains("Ошибка данных"));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[5]/div/ul/li/div/div/div/div/div/div[3]/div[2]/textarea")).sendKeys("ok");
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/ul/li/div/div/div/div/div/div[3]/div[2]/textarea")).sendKeys("ok");
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/ul/li/div/div/div/div/div/div[3]/div[2]/textarea")));
+        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[8]/div/div/div[1]/div[2]/button")).click();//todo org.openqa.selenium.WebDriverException: unknown error: Element <button class="btn_s btn_submit_form" type="button">...</button> is not clickable at point (454, 850). Other element would receive the click: <html class="">...</html>
+//        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[7]/div/div/div[1]/div[2]/button")).click();
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[2]/span"),"Подписать ЭП"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[2]"))).click();//todo:org.openqa.selenium.WebDriverException: unknown error: Element <button class="ln_start">...</button> is not clickable at point (601, 567). Other element would receive the click: <div class="popups_desc">...</div>
+//        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[2]/div/div[2]/div/div[2]/div/a"),"Отправка формы"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[2]/div/div[2]/div/div[2]/div"))).click();//todo: Caused by: org.openqa.selenium.NoSuchElementException: Cannot locate an element using By.xpath: //*[@id="submitting_forms_details"]/div/div[2]/div/div[2]/div/div[2]/div
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[2]/div/div[2]/div/div[2]/div/div/ul/li[2]"))).click();
+//        chromeDriver.findElement(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[2]/div/div[2]/div/div[2]/div")).sendKeys(Keys.ARROW_DOWN);
+//        chromeDriver.findElement(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[2]/div/div[2]/div/div[2]/div")).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[3]/button[1]"))).click();
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[2]/div/div[3]/ul/li/span"),"Подпись успешно сформирована"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"submitting_forms_details\"]/div/div[3]/button[1]"))).click();
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span"),"Отправлен"));
+    }
+    @Test(dependsOnMethods = "sendWithWarnings",description = "Принятие формы в УШ")
+    public void acceptInUSH(){
+        chromeDriver.get(config.get("urlArmada"));
+        chromeDriver.manage().timeouts().implicitlyWait(1000,TimeUnit.MILLISECONDS);
+        if(!(chromeDriver.findElements(By.xpath("/html/body/div[4]/div/div/div[1]/div[1]/h2")).size()>0)) {
+            if(!(chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[1]/div[1]/h2"))).getText().equals("Календарь")) {
+                wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"username\"]"))).sendKeys(config.get("armadaLog"));
+                wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"password\"]"))).sendKeys(config.get("armadaPass"));
+                chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
+                chromeDriver.findElement(By.xpath("/html/body/div[3]/div/div/form/fieldset/div[3]/div[2]/button")).click();
+            }
+        }
+        wait.until(ExpectedConditions.textToBe(By.xpath("/html/body/div[4]/div/div/div[1]/div[1]/h2"),"Календарь"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a"))).click();
+        WebElement row=wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]")));
+        //проверка значений первой формы в таблице
+        Assert.assertEquals("05.033",row.findElement(By.xpath("td[1]/div")).getText());
+        Assert.assertEquals(userConfig.get("mail"),row.findElement(By.xpath("td[2]/div")).getText());
+        Assert.assertEquals("На ручной обработке",row.findElement(By.xpath("td[3]/div")).getText());
+        Assert.assertTrue(row.findElement(By.xpath("td[4]/div")).getText().contains("Есть предупреждения, Есть ошибки"));//todo: contains или equals? , Отчёт просрочен
+        Assert.assertEquals(new SimpleDateFormat("dd.MM.yyyy").format(new Date()),row.findElement(By.xpath("td[5]/div")).getText());
+        Assert.assertEquals(new SimpleDateFormat("dd.MM.yyyy").format(new Date()),row.findElement(By.xpath("td[6]/div")).getText());
+        Assert.assertEquals(userConfig.get("operator"),row.findElement(By.xpath("td[7]/div")).getText());
+        Assert.assertEquals("2016 год, месяц 3",row.findElement(By.xpath("td[8]/div")).getText());
+        Assert.assertTrue(!row.findElement(By.xpath("td[9]/div/input")).isSelected());
+        Assert.assertTrue(row.findElement(By.xpath("td[10]/div/input")).isSelected());
+        //Переход к первой форме
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[1]"))).click();
+        ////*[@id="titulCollapse"]/div/form/div/div[5]/div/div[1]/div[1]/button
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/div[1]"))).click();
+        //Проверка наличия кнопки
+        Assert.assertTrue(chromeDriver.findElements(By.xpath("//*[@id=\"titulCollapse\"]/div/form/div/div[5]/div/div[1]/div[1]/button")).size()>0);
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"titulCollapse\"]/div/form/div/div[5]/div/div[1]/div[1]/button")).getAttribute("title").contains("Применить различие?"));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"titulCollapse\"]/div/form/div/div[5]/div/div[1]/div[1]/button")).isDisplayed());
+        chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[7]/div/form/div/div/textarea")).sendKeys("Комментарий");
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[7]/div/form/div/table/tbody/tr/td[1]/button")).click();
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a"))).click();
+        chromeDriver.navigate().refresh();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[3]/div")));
+        //Проверка статуса в Армаде
+        Assert.assertEquals("Принят",chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[3]/div")).getText());
+        //Переход в ЛК
+        chromeDriver.get(config.get("url"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"header\"]/div/div/div/div[2]/a[1]"))).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div[1]/div[2]/div[2]/div/p/a"))).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[3]/div[2]/div/p/a"))).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]")));
+        Assert.assertEquals("Комментарий",chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div/p[2]")).getText());
+        Assert.assertEquals("Принят",chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span")).getText());
+        String mailContent =  MailClient.getContent("mail."+userConfig.get("mail").split("@")[1],userConfig.get("mail").split("@")[0],userConfig.get("mailpassword"));
+        Assert.assertTrue(mailContent.contains("Форма принята."));
+        Assert.assertTrue(mailContent.contains("Комментарий"));
+        System.out.println();
+
+
+
 
 
     }
