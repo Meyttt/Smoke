@@ -66,8 +66,14 @@ public class Smoke {
     @BeforeClass
     @AfterClass
     void cleanDirectory() {
-        //todo: проверить, что директория существует
+        if(!file.exists()) {
+            file.mkdir();
+            return;
+        }
         File[] files = file.listFiles();
+        if(files.length==0){
+            return;
+        }
         for (int i = 0; i < files.length; i++) {
             files[i].delete();
         }
