@@ -1,3 +1,5 @@
+package utils;
+
 import java.io.*;
 import java.util.Properties;
 
@@ -24,7 +26,7 @@ public class Config {
         if (inputStream != null) {
             p.load(inputStream);
         } else {
-            throw new FileNotFoundException("Config file not found: " + filename);
+            throw new FileNotFoundException("utils.Config file not found: " + filename);
         }
         return p;
     }

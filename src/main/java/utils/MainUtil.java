@@ -29,10 +29,15 @@ public class MainUtil {
     public static void closeWindow() throws AWTException {
         Robot robot = new Robot();
         robot.delay(3000);
-        robot.keyPress(KeyEvent.VK_CONTROL);
+        /*
+        robot.keyPress(KeyEvent.VK_ALT);
         robot.keyPress(KeyEvent.VK_F4);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
         robot.keyRelease(KeyEvent.VK_F4);
+        robot.keyRelease(KeyEvent.VK_ALT);
+        */
+        robot.keyPress(KeyEvent.VK_ESCAPE);
+        robot.keyRelease(KeyEvent.VK_ESCAPE);
+
     }
     public static void typeAndEnter(String str) throws AWTException {
         setClipboard(str);
