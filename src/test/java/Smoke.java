@@ -6,9 +6,12 @@ import org.junit.ComparisonFailure;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.internal.Locatable;
 import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -17,10 +20,12 @@ import sql.SqlManager;
 import utils.Config;
 import utils.MainUtil;
 
+import javax.mail.MessagingException;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -62,19 +67,19 @@ public class Smoke {
         cap.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);
         cap.setCapability(ChromeOptions.CAPABILITY, options);
         chromeDriver = new ChromeDriver(cap);
-        wait = new WebDriverWait(chromeDriver, 15);
+        wait = new WebDriverWait(chromeDriver, 35);
         wait.pollingEvery(100, TimeUnit.MILLISECONDS);
     }
 
     @BeforeClass
     @AfterClass
     void cleanDirectory() {
-        if(!file.exists()) {
+        if (!file.exists()) {
             file.mkdir();
             return;
         }
         File[] files = file.listFiles();
-        if(files.length==0){
+        if (files.length == 0) {
             return;
         }
         for (int i = 0; i < files.length; i++) {
@@ -86,7 +91,7 @@ public class Smoke {
     void PageAndLinks() {
         //наличие надписи
         chromeDriver.get(config.get("url"));
-        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/div[1]/div/div/div/div[1]/h3")));
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[1]/div[1]/div[2]/div/div/div/div/div/div/p")));
         Assert.assertTrue(Pattern.matches("Данный ресурс предназначен[\\w\\s]+для операторов связи", chromeDriver.findElementByXPath("//*[@id=\"wrapper\"]/ng-component/div[1]/div[1]/div[2]/div/div/div/div/div/div/p").getText()));
         //Проверка ссылки "О связи"
         chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/div[2]/div/div[3]/div/div/p/button[1]")).click();
@@ -105,19 +110,19 @@ public class Smoke {
         chromeDriver.findElement(By.cssSelector("a[title='Close']")).click();
         chromeDriver.manage().timeouts().implicitlyWait(100, TimeUnit.MILLISECONDS);
         //Переходим на страницу "Статистика"
-        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a[ng-reflect-router-link='statistics']")));
-        chromeDriver.findElement(By.cssSelector("a[ng-reflect-router-link='statistics']")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(2) > a")));
+        chromeDriver.findElement(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(2) > a")).click();
         //cкачиваем файл
         WebElement webElement = chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[4]/ul[2]/li[1]/div/a"));
         Assert.assertEquals(webElement.findElement(By.tagName("h4")).getText(), "Абоненты ШПД (I квартал 2016 года)");
         webElement.click(); //TODO: добавить проверку, скачалось ли
         //Переходим на страницу "События и документы"
-        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a[ng-reflect-router-link='events']")));
-        chromeDriver.findElement(By.cssSelector("a[ng-reflect-router-link='events']")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(3) > a")));
+        chromeDriver.findElement(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(3) > a")).click();
         //На странице присутствуют строки "События", "Письмо Минкомсвязи России о порядке предоставления статистической отчетности"
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.partialLinkText("События")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[2]/ul/li[1]/div/div[2]/p")));
-        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[2]/ul/li[1]/div/div[2]/p")).getText().contains("Информационное письмо Минкомсвязи России о недопустимости использования посреднических услуг."));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[2]/ul/li[1]/div/div[2]/p")).getText().contains("Минкомсвязь России уведомляет о недопустимости использования операторами связи посреднических услуг."));
         //Переходим на вкладку "Документы"
         chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[1]/div/div/div/ul/li[2]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[3]/ul/li[1]/div/a")));
@@ -129,15 +134,15 @@ public class Smoke {
         //Скачивается файл %D0%9D%D0%9D-%D0%9F14-062-28741.rar по ссылке Письмо Минкомсвязи России от 29.12.2016 №НН-П14-062-28741 «О порядке представления статистической отчетности»
         chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div[3]/ul/li[1]/div/a")).click();
         //Переходим на страницу "Вопросы и ответы"
-        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a[ng-reflect-router-link='faq']")));
-        chromeDriver.findElement(By.cssSelector("a[ng-reflect-router-link='faq']")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(4) > a")));
+        chromeDriver.findElement(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(4) > a")).click();
         //На странице присутствуют строки "Часто задаваемые вопросы", "Где можно ознакомиться с порядком предоставления статистической отчетности в сфере связи?"
         wait.until(ExpectedConditions.presenceOfElementLocated(By.className("blc_frequently_questions_ttl")));
         Assert.assertTrue(chromeDriver.findElement(By.className("blc_frequently_questions_ttl")).findElement(By.tagName("h3")).getText().equals("Часто задаваемые вопросы"));
-        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ul/li[1]/div[1]/h4")).getText().contains("Где можно ознакомиться с порядком предоставления статистической отчетности в сфере связи?"));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ul/li[2]/div[1]/h4")).getText().contains("Где можно ознакомиться с порядком предоставления статистической отчетности в сфере связи?"));
         //Переходим на страницу "Контакты"
-        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a[ng-reflect-router-link='contacts']")));
-        chromeDriver.findElement(By.cssSelector("a[ng-reflect-router-link='contacts']")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(5) > a")));
+        chromeDriver.findElement(By.cssSelector("#header > div > div > div > div.blc_main_menu > div.navbar-collapse.collapse > ul > li:nth-child(5) > a")).click();
         //"На странице присутствуют строки ""Адрес 125375, г. Москва, ул. Тверская, д. 7"""
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div/div/ul/li[1]/div/p")));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/div[2]/div/div/ul/li[1]/div/p")).getText().contains("Адрес"));
@@ -209,7 +214,7 @@ public class Smoke {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[1]/h3")));
         //проверка общего числа форм.
 
-        Assert.assertEquals(11,chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[.]/div[2]/span")).size());
+        Assert.assertEquals(11, chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/home-form/div[2]/div[.]/div[2]/span")).size());
     }
 
     @Test(description = "")
@@ -225,17 +230,19 @@ public class Smoke {
             chromeDriver.findElement(By.xpath("/html/body/div[3]/div/div/form/fieldset/div[3]/div[2]/button")).click();
         }
         //Переход на страницу "Пользователи"
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div[1]/div[1]/h2")));//todo:org.openqa.selenium.TimeoutException: Expected condition failed: waiting for presence of element located by: By.xpath: /html/body/div[4]/div/div/div[1]/div[1]/h2 (tried for 15 second(s) with 100 MILLISECONDS interval)
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body > div.container-fa.container-fluid > div > div > div:nth-child(1) > div.col-lg-7 > h2")));//todo:org.openqa.selenium.TimeoutException: Expected condition failed: waiting for presence of element located by: By.xpath: /html/body/div[4]/div/div/div[1]/div[1]/h2 (tried for 15 second(s) with 100 MILLISECONDS interval)
         chromeDriver.findElement(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[2]/a")).click();
         List<WebElement> dictionaries = chromeDriver.findElements(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[2]/ul/li[.]/a"));
         for (WebElement webElement : dictionaries) {
             if (webElement.getText().equals("Пользователи")) {
                 webElement.click();
-//                wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[1]/div/h2")),"Пользователи"));
-                wait.until(ExpectedConditions.elementToBeClickable(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/nav/a[1]")));
+//
+                wait.until(ExpectedConditions.elementToBeClickable(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/div/div[1]/div/div[1]/button[1]")));
+                break;
             }
         }
-        chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/nav/a[1]")).click();
+        chromeDriver.manage().window().maximize();
+        clickButton("/html/body/div[4]/div/div/div[2]/div/div[1]/div/div[1]/div/div[1]/button[1]");
         //удаление из бд пользователей, имеющих е-меил, используемый для регистрации
         SqlManager sqlManager = new SqlManager(databaseConfig.get("url"), databaseConfig.get("name"), databaseConfig.get("password"));
         sqlManager.deleteOperatorHistory(userConfig.get("mail"));
@@ -305,7 +312,7 @@ public class Smoke {
         MailClient.checkEmail("mail." + userConfig.get("mail").split("@")[1], userConfig.get("mail").split("@")[0], userConfig.get("mailpassword"));
         try {
             chromeDriver.get(MailClient.getUrl());
-        }catch (NullPointerException e){
+        } catch (NullPointerException e) {
             try {
                 Thread.sleep(10000);
 
@@ -366,9 +373,9 @@ public class Smoke {
         Assert.assertEquals(chromeDriver.findElements(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div[.]/div[.]/div[2]/div")).size(), 41);
         //проверка, что 4 блока не подсвечено
         List<WebElement> grey = chromeDriver.findElements(By.xpath("//*[@class=\"bg_colors empty\"]"));
-        Assert.assertEquals(grey.size(), 4);
-        //проверка, что отчеты за 2-4 квартал и 2017 год не подсвечены
-        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div[2]/div[1]/h3")).findElement(By.xpath(".//../..")).getAttribute("class").equals("bg_colors empty"));
+        Assert.assertEquals(grey.size(), 3);
+        //проверка, что отчеты за 3-4 квартал и 2017 год не подсвечены
+//        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div[2]/div[1]/h3")).findElement(By.xpath(".//../..")).getAttribute("class").equals("bg_colors empty"));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div[3]/div[1]/h3")).findElement(By.xpath(".//../..")).getAttribute("class").equals("bg_colors empty"));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div[4]/div[1]/h3")).findElement(By.xpath(".//../..")).getAttribute("class").equals("bg_colors empty"));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div[5]/div[1]/h3")).findElement(By.xpath(".//../..")).getAttribute("class").equals("bg_colors empty"));
@@ -403,20 +410,33 @@ public class Smoke {
         wait.until(ExpectedConditions.numberOfElementsToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[4]/div[2]/ul/li[.]"), 2));
         Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[4]/div[2]/ul/li[1]/div[1]/div[2]/p")).getText(), "Обновлен черновик");
         Assert.assertEquals(chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[4]/div[2]/ul/li[2]/div[1]/div[2]/p")).getText(), "Создан черновик");
-        String updateDate = chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[3]/div/span")).getText().replace("июн", " ").replace(" ", "");
-        SimpleDateFormat siteDate = new SimpleDateFormat("ddyyyyHH:mm");
+        //todo: сделать метод исправления кода месяца в текстовом виде на циферный
+        String updateDate = chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[3]/div/span")).getText().replace("июл", "07").replace(" ", "");
+        SimpleDateFormat siteDate = new SimpleDateFormat("ddMMyyyyHH:mm");
         String realDate = siteDate.format(date);
-        try {
-            Assert.assertEquals(updateDate, realDate);
-        } catch (ComparisonFailure e) {
+        if (!updateDate.equals(realDate)) {
             try {
-                if (!(Math.abs(siteDate.parse(updateDate).getTime() - date.getTime()) < 60000)) {
-                    throw e;
+                if (!(Math.abs(siteDate.parse(updateDate).getTime() - date.getTime()) < Long.parseLong(config.get("maxDelay")))) {
+                    System.out.println(Math.abs(siteDate.parse(updateDate).getTime()));
+                    System.out.println( date.getTime());
+                    System.out.println((Math.abs(siteDate.parse(updateDate).getTime() - date.getTime())));
+                    throw new ComparisonFailure("Текущая дата и дата обновления формы на сайте не совпадают", updateDate, realDate);
                 }
-            } catch (ParseException e1) {
-                e1.printStackTrace();
+            } catch (ParseException e) {
+                e.printStackTrace();
             }
         }
+//        try {
+//            Assert.assertEquals(updateDate, realDate);
+//        } catch (ComparisonFailure e) {
+//            try {
+//                if (!(Math.abs(siteDate.parse(updateDate).getTime() - date.getTime()) < 60000)) {
+//                    throw e;
+//                }
+//            } catch (ParseException e1) {
+//                e1.printStackTrace();
+//            }
+//        }
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]/span")));
         chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]/span")).click();
         wait.until(ExpectedConditions.textToBePresentInElement(chromeDriver.findElement(By.xpath("//*[@id=\"gl_form2\"]/div[2]/table/tbody/tr[2]/td[4]/p")), "Величина показателя"));
@@ -473,13 +493,13 @@ public class Smoke {
         chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/ul/li/div/div/div/div/div/div[3]/div[2]/textarea")).sendKeys("ok");
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/ul/li/div/div/div/div/div/div[3]/div[2]/textarea")));
         WebElement button = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[8]/div/div/div[1]/div[2]/button")));
-        while (true){
+        while (true) {
             try {
                 {
                     button.click();
                     break;
                 }
-            }catch (WebDriverException e){
+            } catch (WebDriverException e) {
                 continue;
             }
         }
@@ -487,11 +507,11 @@ public class Smoke {
 //        chromeDriver.findElement(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[7]/div/div/div[1]/div[2]/button")).click();
         wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[2]/span"), "Подписать ЭП"));
         WebElement webElement = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[2]")));
-        while(true){
+        while (true) {
             try {
                 webElement.click();
                 break;
-            }catch (WebDriverException e){
+            } catch (WebDriverException e) {
                 continue;
             }
         }
@@ -520,7 +540,7 @@ public class Smoke {
         }
         wait.until(ExpectedConditions.textToBe(By.xpath("/html/body/div[4]/div/div/div[1]/div[1]/h2"), "Календарь"));
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a"))).click();
-        WebElement row = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]")));
+        WebElement row = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[text()='"+userConfig.get("mail")+"']/../..")));
         //проверка значений первой формы в таблице
         Assert.assertEquals("05.033", row.findElement(By.xpath("td[1]/div")).getText());
         Assert.assertEquals(userConfig.get("mail"), row.findElement(By.xpath("td[2]/div")).getText());
@@ -546,9 +566,11 @@ public class Smoke {
         chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a"))).click();
         chromeDriver.navigate().refresh();
+        //todo искать по оператору
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[3]/div")));
         //Проверка статуса в Армаде
-        Assert.assertEquals("Принят", chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[3]/div")).getText());
+        row=wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[text()='"+userConfig.get("mail")+"']/../..")));
+        Assert.assertEquals("Принят", row.findElement(By.xpath("td[3]/div")).getText());
         //Переход в ЛК
         chromeDriver.get(config.get("url"));
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"header\"]/div/div/div/div[2]/a[1]"))).click();
@@ -588,55 +610,55 @@ public class Smoke {
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"fancy_import\"]/h3")).getText().contains("Импортировать"));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"fancy_import\"]/h3")).getText().contains("из универсального шаблона"));
         //Нажимаем "Импортировать"
-        ((JavascriptExecutor)chromeDriver).executeScript(
+        ((JavascriptExecutor) chromeDriver).executeScript(
                 "HTMLInputElement.prototype.click = function() {                     " +
                         "  if(this.type !== 'file') HTMLElement.prototype.click.call(this);  " +
-                        "};                                                                  " );
+                        "};                                                                  ");
         clickButton("//*[@id=\"drop\"]/button/span");
-        chromeDriver.findElement(By.xpath("//*[@id=\"drop\"]/input")).sendKeys(Resources.getResource("F1-05.0331.9.0M.xls").getPath().replaceFirst("/", ""));
+        chromeDriver.findElement(By.xpath("//*[@id=\"drop\"]/input")).sendKeys(new File("data/forms/F1-05.0331.9.0M.xls").getAbsolutePath());
 //        typeIntoFileInput( new File("data/forms/F1-05.033 1.9.0M.xls"));
-        chromeDriver.manage().timeouts().implicitlyWait(1,TimeUnit.SECONDS);
+        chromeDriver.manage().timeouts().implicitlyWait(1, TimeUnit.SECONDS);
         WebElement webElement0 = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]/span")));
-        while (true){
+        while (true) {
             try {
                 webElement0.click();
                 break;
-            }catch (WebDriverException e){
+            } catch (WebDriverException e) {
                 continue;
             }
         }
 
         //Парсинг значений показателей на странице
         List<WebElement> rows = chromeDriver.findElements(By.xpath("//*[@id=\"gl_form2\"]/div[2]/table/tbody/tr[.]"));
-        HashMap<String,String> siteMap= new HashMap<>();
+        HashMap<String, String> siteMap = new HashMap<>();
         for (WebElement webElement : rows) {
-            if(webElement.findElements(By.xpath("td[5]/input")).size()>0){
-                siteMap.put(String.valueOf(Integer.parseInt(webElement.findElement(By.xpath("td[1]/p")).getText()))+"."+webElement.findElement(By.xpath("td[2]/p")).getText(),
-                        webElement.findElement(By.xpath("td[5]/input")).getAttribute("ng-reflect-model"));
+            if (webElement.findElements(By.xpath("td[5]/input")).size() > 0) {
+                siteMap.put(String.valueOf(Integer.parseInt(webElement.findElement(By.xpath("td[1]/p")).getText())) + "." + webElement.findElement(By.xpath("td[2]/p")).getText(),
+                        webElement.findElement(By.xpath("td[5]/input")).getAttribute("value"));
             }
         }
         //Проверка, что данные формы заполнены данными из файла
-        Assert.assertTrue(MainUtil.compareMaps(siteMap,ExcelParser.getValues(Resources.getResource("F1-05.0331.9.0M.xls").getPath())));
+        Assert.assertTrue(MainUtil.compareMaps(siteMap, ExcelParser.getValues(new File("data/forms/F1-05.0331.9.0M.xls").getAbsolutePath())));
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[1]/span");
         //Заполняем поле "Испольнитель", "Email" корректными значенями и нажимаем "Отправить", отправляем без ЭП
-        sendKeysToInput("//*[@id=\"author\"]","Исполнитель");
-        sendKeysToInput("//*[@id=\"authorEmail\"]",userConfig.get("mail"));
-        sendKeysToInput("//*[@id=\"ogrn\"]",userConfig.get("gogrn"));
+        sendKeysToInput("//*[@id=\"author\"]", "Исполнитель");
+        sendKeysToInput("//*[@id=\"authorEmail\"]", userConfig.get("mail"));
+        sendKeysToInput("//*[@id=\"ogrn\"]", userConfig.get("gogrn"));
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[2]/button");
-        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
         clickButton("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[1]/span");
         //Проверяем статус "Принят"
-        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span"),"Принят"));
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span"), "Принят"));
         //Переходим в 2016/Формы за 1 квартал/ФФСН № 5-связь/Сводный отчет по организации
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div/div/div/div/div/a");
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[1]/div[2]/div/p/a");
         //Появляется окно Уведомление
-        Assert.assertTrue(chromeDriver.findElements(By.xpath("/html/body/div")).size()>0);
-        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"summary_accepted\"]/div/div[1]/h3"),"Уведомление"));
+        Assert.assertTrue(chromeDriver.findElements(By.xpath("/html/body/div")).size() > 0);
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"summary_accepted\"]/div/div[1]/h3"), "Уведомление"));
         //Нажимаем "Сдать сводный отчет"
         clickButton("//*[@id=\"summary_accepted\"]/div/div[2]/div/div/button[1]/span");
         //Открывается форма, Признак сводного отчета = true
-        Assert.assertTrue(chromeDriver.findElements(By.xpath("//*[@id=\"checkboxG1\"]")).size()>0);
+        Assert.assertTrue(chromeDriver.findElements(By.xpath("//*[@id=\"checkboxG1\"]")).size() > 0);
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"checkboxG1\"]")).isSelected());
         //Нажимаем "Импортировать из универсального шаблона"
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[2]/li[2]/a");
@@ -644,53 +666,329 @@ public class Smoke {
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"fancy_import\"]/h3")).getText().contains("Импортировать"));
         Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"fancy_import\"]/h3")).getText().contains("из универсального шаблона"));
         clickButton("//*[@id=\"drop\"]/button/span");
-        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
         //Выбираем файл "F1-05.033 1.9.0 - сводный.xls"
-        ((JavascriptExecutor)chromeDriver).executeScript(
+        ((JavascriptExecutor) chromeDriver).executeScript(
                 "HTMLInputElement.prototype.click = function() {                     " +
                         "  if(this.type !== 'file') HTMLElement.prototype.click.call(this);  " +
-                        "};                                                                  " );
+                        "};                                                                  ");
         clickButton("//*[@id=\"drop\"]/button/span");
-        chromeDriver.findElement(By.xpath("//*[@id=\"drop\"]/input")).sendKeys(Resources.getResource("F1-05.0331.9.0All.xls").getPath().replaceFirst("/", ""));
+        chromeDriver.findElement(By.xpath("//*[@id=\"drop\"]/input")).sendKeys(new File("data/forms/F1-05.0331.9.0All.xls").getAbsolutePath());
 
-        chromeDriver.manage().timeouts().implicitlyWait(1,TimeUnit.SECONDS);
+        chromeDriver.manage().timeouts().implicitlyWait(1, TimeUnit.SECONDS);
         //Парсинг значений показателей на странице
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[2]/span");
         List<WebElement> rows2 = chromeDriver.findElements(By.xpath("//*[@id=\"gl_form2\"]/div[2]/table/tbody/tr[.]"));
-        HashMap<String,String> siteMap2= new HashMap<>();
+        HashMap<String, String> siteMap2 = new HashMap<>();
         for (WebElement webElement : rows2) {
-            if(webElement.findElements(By.xpath("td[5]/input")).size()>0){
-                siteMap2.put(String.valueOf(Integer.parseInt(webElement.findElement(By.xpath("td[1]/p")).getText()))+"."+webElement.findElement(By.xpath("td[2]/p")).getText(),
-                        webElement.findElement(By.xpath("td[5]/input")).getAttribute("ng-reflect-model"));
+            if (webElement.findElements(By.xpath("td[5]/input")).size() > 0) {
+                siteMap2.put(String.valueOf(Integer.parseInt(webElement.findElement(By.xpath("td[1]/p")).getText())) + "." + webElement.findElement(By.xpath("td[2]/p")).getText(),
+                        webElement.findElement(By.xpath("td[5]/input")).getAttribute("value"));
             }
         }
 
         //Проверка, что данные формы заполнены данными из файла
-        Assert.assertTrue(MainUtil.compareMaps(siteMap2,ExcelParser.getValues(Resources.getResource("F1-05.0331.9.0All.xls").getPath())));
+        Assert.assertTrue(MainUtil.compareMaps(siteMap2, ExcelParser.getValues(new File("data/forms/F1-05.0331.9.0All.xls").getAbsolutePath())));
         //Заполняем поле "Испольнитель", "Email" корректными значенями и нажимаем "Отправить", отправляем без ЭП
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[1]/div/div/div/ul/li[1]/span");
-        sendKeysToInput("//*[@id=\"author\"]","Исполнитель");
-        sendKeysToInput("//*[@id=\"authorEmail\"]",userConfig.get("mail"));
-        sendKeysToInput("//*[@id=\"ogrn\"]",userConfig.get("gogrn"));
+        sendKeysToInput("//*[@id=\"author\"]", "Исполнитель");
+        sendKeysToInput("//*[@id=\"authorEmail\"]", userConfig.get("mail"));
+        sendKeysToInput("//*[@id=\"ogrn\"]", userConfig.get("gogrn"));
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[3]/div[6]/div/div/div[1]/div[2]/button");
-        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
-        clickButton("//*[@id=\"submitting_forms\"]/div/div[2]/div/button[1]/span");
+        chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
+        clickButtonCSS("#submitting_forms > div > div.popups_desc > div > button:nth-child(1)");
         //Проверяем статус "Принят"
-        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span"),"Принят"));
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/ul[1]/li[4]/div/span"), "Принят"));
         //Переходим на уровень выше
         clickButton("//*[@id=\"wrapper\"]/ng-component/ng-component/div[1]/div/div/div/div/div/div/a");
         //Статус по форме "ФФСН № 5-связь" - "Принят"
-        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[1]/div[4]/div/p"),"Принят"));
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"wrapper\"]/ng-component/ng-component/div[2]/div/div[1]/div[4]/div/p"), "Принят"));
         //Переходим в административный интерфейс
         chromeDriver.navigate().to(config.get("urlArmada"));
-//        clickButton("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a");
+        chromeDriver.manage().timeouts().implicitlyWait(3,TimeUnit.SECONDS);
         clickButton("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a");
-        chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
+        chromeDriver.manage ().timeouts().implicitlyWait(1000, TimeUnit.MILLISECONDS);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[4]/div")));
         //Проверяем 1-ю строку в списке: в графе "Состояние" есть "Это сводный отчёт"
-//        Assert.assertTrue(chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[4]/div")).getText().contains("Это сводный отчёт")); //todo: баг 1395
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[4]/div")).getText().contains("Это сводный отчёт")); //todo: баг 1395
+    }
+//todo: Сейчас частично поиск идет не по 1 строке, а по оператору!
+
+    @Test(dependsOnMethods = "acceptInUSH", description = "Импорт УШ формы из Excel")
+    public void sendViaMail()  {
+        try {
+            //Отправляем письмо на адрес statmks.test@12.voskhod.local с адреса statmks.student.manual@12.voskhod.local (адреса нужно вынести в конфиг) с вложением F1-03.033 1.9.0 - Москва.xls
+            MailClient.sendMessage(config.get("mailTo"),config.get("mailFrom"),new File("data/forms/F1-03.033 1.9.0.xls"));
+            //"Дожидаемся ответа на письмо в ящике statmks.test.user@12.voskhod.local
+            String content= MailClient.getContentFrom(config.get("mailFrom"),config.get("passwordFrom"),config.get("mailTo"));
+//            String content=MailClient.getContent("mail."+config.get("mailFrom").split("@")[config.get("mailFrom").split("@").length-1],config.get("mailFrom").split("@")[0],config.get("passwordFrom"));
+            // Проверяем в ответном письме ""из них сохранено в базе данных: 1"""
+            Assert.assertTrue(content.contains("из них сохранено в базе данных: \t1"));
+            //Переходим в административный интерфейс, Переходим во вкладку Обработка форм (УШ)
+            chromeDriver.navigate().to(config.get("urlArmada"));
+            wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a")));
+            clickButton("//*[@id=\"navbar-collapse\"]/ul[1]/li[4]/a");
+            //Проверяем 1-ю строку по данному емаил в списке
+            WebElement row = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[text()='"+userConfig.get("mail")+"']/../..")));
+            Assert.assertEquals("03.033", row.findElement(By.xpath("td[1]/div")).getText());
+            Assert.assertEquals(config.get("mailFrom"), row.findElement(By.xpath("td[2]/div")).getText());
+            Assert.assertTrue( row.findElement(By.xpath("td[3]/div")).getText().contains("На ручной обработке"));
+            Assert.assertTrue(row.findElement(By.xpath("td[4]/div")).getText().contains("Есть предупреждения"));//todo: contains или equals? , Отчёт просрочен
+            Assert.assertEquals(new SimpleDateFormat("dd.MM.yyyy").format(new Date()), row.findElement(By.xpath("td[5]/div")).getText());
+            Assert.assertEquals(new SimpleDateFormat("dd.MM.yyyy").format(new Date()), row.findElement(By.xpath("td[6]/div")).getText());
+            Assert.assertEquals(config.get("mailOperator"), row.findElement(By.xpath("td[7]/div")).getText());
+            Assert.assertEquals("2016 год, месяц 3", row.findElement(By.xpath("td[8]/div")).getText());
+            Assert.assertTrue(!row.findElement(By.xpath("td[9]/div/input")).isSelected());
+            Assert.assertTrue(!row.findElement(By.xpath("td[10]/div/input")).isSelected());
+
+        } catch (MessagingException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
 
     }
+    @Test(dependsOnMethods = "sendViaMail")
+    public void manualInputArmada(){
+        //В администратоивном интерфейсе переходим на вкладку "Ввод форм", в фильтре "Операторы связи" ввести "НИД12ТЕСТ_Ф" и нажать кнопку поиска
+        chromeDriver.get(config.get("urlArmada"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[5]/a")));
+        clickButton("//*[@id=\"navbar-collapse\"]/ul[1]/li[5]/a");
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        sendKeysToInput("/html/body/div[4]/div/div/div[2]/div[1]/div/div[1]/div/div[1]/div/div/input",config.get("manualOperator"));
+        clickButton("/html/body/div[4]/div/div/div[2]/div[1]/div/div[1]/div/div[1]/div/div/span[2]/button[2]");
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        List<WebElement> operators = chromeDriver.findElements(By.xpath("/html/body/div[4]/div/div/div[2]/div[1]/div/div[1]/div/div[3]/div/div/div[3]/div/div[2]/div/div/table/tbody/tr[.]/td[1]/div"));
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        circle:
+        while(true) {
+            for (WebElement operatorElement : operators) {
+                chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
+                try {
+                    if (operatorElement.getText().equals(config.get("manualOperator"))) {
+                        operatorElement.click();
+                        break circle;
+                    }
+                } catch (StaleElementReferenceException e) {
+                    operators = chromeDriver.findElements(By.xpath("/html/body/div[4]/div/div/div[2]/div[1]/div/div[1]/div/div[3]/div/div/div[3]/div/div[2]/div/div/table/tbody/tr[.]/td[1]/div"));
+                    continue circle;
+                }
+            }
+        }
+        wait.until(ExpectedConditions.textToBe(By.xpath("/html/body/div[4]/div/div/div[2]/div[2]/h4"),"НИД12ТЕСТ_Ф"));
+
+
+        while (true){
+            try{
+                String attribute =chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[1]/div/div/button")).getAttribute("aria-expanded");
+                if (attribute==null){
+                    clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[1]/div/div/button");
+                    continue;
+                }
+                if (attribute.equals("false")){
+                    clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[1]/div/div/button");
+                }else{
+                    break;
+                }
+            }catch (Exception e){}
+
+        }
+        List<WebElement> options = chromeDriver.findElements(By.xpath("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[1]/div/div/div/ul/li[.]/a/span[1]"));
+        for(WebElement option:options){
+            if(option.getText().equals(config.get("manualType"))){
+                option.click();
+                break;
+            }
+        }
+        while (true){
+            try{
+                String attribute =chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[2]/div/div/button")).getAttribute("aria-expanded");
+                if (attribute==null){
+                    clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[2]/div/div/button");
+                    continue;
+                }
+                if (attribute.equals("false")){
+                    clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[2]/div/div/button");
+                }else{
+                    break;
+                }
+            }catch (Exception e){}
+
+        }
+
+        options = chromeDriver.findElements(By.xpath("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[2]/div/div/div/ul/li[.]/a/span[1]"));
+        for(WebElement option:options){
+            if(option.getText().equals(config.get("manualPeriod"))){
+                option.click();
+                break;
+            }
+        }
+        while (true){
+            try{
+                String attribute =chromeDriver.findElement(By.xpath("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[3]/div/div/button")).getAttribute("aria-expanded");
+                if (attribute==null){
+                    clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[3]/div/div/button");
+                    continue;
+                }
+                if (attribute.equals("false")){
+                    clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[3]/div/div/button");
+                }else{
+                    break;
+                }
+            }catch (Exception e){}
+
+        }
+
+        options = chromeDriver.findElements(By.xpath("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/form[3]/div/div/div/ul/li[.]/a/span[1]"));
+        for(WebElement option:options){
+            if(option.getText().equals(config.get("manualYear"))){
+                option.click();
+                break;
+            }
+        }
+        chromeDriver.manage().timeouts().implicitlyWait(1,TimeUnit.SECONDS);
+        clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[1]/nav/a[1]");
+        clickButton("/html/body/div[5]/div/div/div[3]/button[1]");
+        //На титульной части формы заполняем обязательные поля, в табличной части формы заполняем данные: 1, 1 в первые два поля, нажимаем "Проверить"
+        try {
+            sendKeysToInput("//*[@id=\"titleTab\"]/div/form/div/div[11]/div/div[2]/div[1]/div/div[2]/div/input", "Исполнитель");
+        }catch (InvalidElementStateException e){
+            e.printStackTrace();
+        }
+        sendKeysToInput("//*[@id=\"titleTab\"]/div/form/div/div[11]/div/div[2]/div[2]/div[1]/div[2]/div/input",userConfig.get("mail"));
+        sendKeysToInput("//*[@id=\"titleTab\"]/div/form/div/div[11]/div/div[2]/div[2]/div[2]/div[2]/div/input",userConfig.get("phone"));
+        sendKeysToInput("//*[@id=\"titleTab\"]/div/form/div/div[9]/div/div[2]/div[2]/div/input",userConfig.get("index"));
+
+        clickButtonCSS("body > div.container-fa.container-fluid > div > div > div:nth-child(2) > div.col-md-9 > div:nth-child(4) > ul > li:nth-child(2) > a");
+        sendKeysToInput("//*[@id=\"tableTab\"]/div/div[1]/input","1");
+        sendKeysToInput("//*[@id=\"tableTab\"]/div/div[2]/input","1");
+        clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[3]/a[1]/i");
+        ////Появляется предупреждение "Зафиксировано опоздание. Рекомендуется сдавать отчётность не позднее: "
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"warningsTab\"]/div/div/div[1]"),"Предупреждение:"));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"warningsTab\"]/div/div/div[2]/div")));
+        Assert.assertTrue(chromeDriver.findElement(By.xpath("//*[@id=\"warningsTab\"]/div/div/div[2]/div")).getText().contains("Зафиксировано опоздание. Рекомендуется сдавать отчётность не позднее:"));
+        sendKeysToInput("//*[@id=\"warningsTab\"]/div/div/div[3]/textarea","ок");
+        clickButton("/html/body/div[4]/div/div/div[2]/div[2]/div[3]/a[2]/i");
+        clickButtonCSS("#navbar-collapse > ul:nth-child(1) > li:nth-child(4) > a");
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div/div[2]/div/div[3]/div/table/tbody[1]/tr[1]/td[2]")));
+        WebElement row = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[text()='"+userConfig.get("mail")+"']/../..")));
+        //проверка значений первой формы в таблице
+        Assert.assertEquals("03.033", row.findElement(By.xpath("td[1]/div")).getText());
+        Assert.assertEquals(userConfig.get("mail"), row.findElement(By.xpath("td[2]/div")).getText());
+        Assert.assertEquals("На ручной обработке", row.findElement(By.xpath("td[3]/div")).getText());
+        Assert.assertTrue(row.findElement(By.xpath("td[4]/div")).getText().contains("Есть предупреждения"));//todo: contains или equals? , Отчёт просрочен
+        Assert.assertTrue(row.findElement(By.xpath("td[4]/div")).getText().contains("Отчёт просрочен"));//todo: contains или equals? , Отчёт просрочен
+        Assert.assertEquals(new SimpleDateFormat("dd.MM.yyyy").format(new Date()), row.findElement(By.xpath("td[5]/div")).getText());
+        Assert.assertEquals(new SimpleDateFormat("dd.MM.yyyy").format(new Date()), row.findElement(By.xpath("td[6]/div")).getText());
+        Assert.assertEquals(config.get("manualOperator"), row.findElement(By.xpath("td[7]/div")).getText());
+        Assert.assertEquals("2016 год, месяц 3", row.findElement(By.xpath("td[8]/div")).getText());
+        Assert.assertTrue(!row.findElement(By.xpath("td[9]/div/input")).isSelected());
+        Assert.assertTrue(!row.findElement(By.xpath("td[10]/div/input")).isSelected());
+
+    }
+    @Test(dependsOnMethods = "manualInputArmada")
+    void generateInArmada(){
+        //В Административном интерфейсе переходим на вкладку "Исходящие отчеты"->Шаблоны
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[3]/a")));//todo:org.openqa.selenium.TimeoutException: Expected condition failed: waiting for presence of element located by: By.xpath: /html/body/div[4]/div/div/div[1]/div[1]/h2 (tried for 15 second(s) with 100 MILLISECONDS interval)
+        chromeDriver.findElement(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[3]/a")).click();
+        List<WebElement> dictionaries = chromeDriver.findElements(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[3]/ul/li[.]/a"));
+        for (WebElement webElement : dictionaries) {
+            if (webElement.getText().equals("Шаблоны")) {
+                webElement.click();
+                //Открывается список, в котором присутствует файл отчета year_form
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[text()='year_form']")));
+                break;
+            }
+        }
+        clickButton("//*[text()='year_form']");
+        chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+        //Выбираем строку с файлом отчета year_form, нажимаем  кнопку Выполнить
+        clickButton("/html/body/div[4]/div/div/div[2]/button[4]/i");
+        //Откывается окошко "Параметры отчета Годовой бланк"
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[5]/div/div/div[1]/h4")));
+        //В поле "Код формы" вводим "05.033", в поле "Год" - 2016, нажимаем "Сформировать"
+        sendKeysToInput("//*[@id=\"form\"]",config.get("generateCode"));
+        sendKeysToInput("//*[@id=\"year\"]",config.get("generateYear"));
+        clickButton("/html/body/div[5]/div/div/div[3]/button[1]");
+        //Всплывает окошко "Задача генерации отчета успешно создана"
+        wait.until(ExpectedConditions.textToBe(By.xpath("/html/body/div[5]/span[3]"),"Задача генерации отчета успешно создана"));
+        //Дожидаемся появления окошка "Отчет успешно сгенерирован", переходим по ссылке
+        wait.until(ExpectedConditions.textToBe(By.xpath("/html/body/div[5]/span[2]"),"Отчет успешно сгенерирован"));
+        clickButton("/html/body/div[5]/a");
+        //По ссылке скачивается отчет
+        //Открываем отчет
+        try {
+            Thread.sleep(20000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        File report = lastModified("data/docs");
+        ExcelParser excelParser = new ExcelParser(report);
+        //На 1-м листе присутствует текст "С В О Д Н Ы Й   О Т Ч Е Т ", "По форме ФФСН № 3-связь на конец 2016 года"
+        Assert.assertTrue(excelParser.rowEqualsValue(0,"С В О Д Н Ы Й   О Т Ч Е Т    "));
+        Assert.assertTrue(excelParser.rowEqualsValue(4,"По форме ФФСН № 3-связь на конец 2016 года"));
+    }
+    @Test(dependsOnMethods = "generateInArmada")
+    void reportViewArmada(){
+        //"В Административном интерфейсе переходим на вкладку ""Исходящие отчеты""->Архив отчетов
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[3]/a")));//todo:org.openqa.selenium.TimeoutException: Expected condition failed: waiting for presence of element located by: By.xpath: /html/body/div[4]/div/div/div[1]/div[1]/h2 (tried for 15 second(s) with 100 MILLISECONDS interval)
+        chromeDriver.findElement(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[3]/a")).click();
+        List<WebElement> reports = chromeDriver.findElements(By.xpath("//*[@id=\"navbar-collapse\"]/ul[1]/li[3]/ul/li[.]/a"));
+        for (WebElement webElement : reports) {
+            if (webElement.getText().equals("Архив отчетов")) {
+                webElement.click();
+                //Открывается список, в котором присутствует файл отчета year_form
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/div/div[1]/div/button")));
+                break;
+            }
+        }
+
+        clickButton("/html/body/div[4]/div/div/div[2]/div/div[1]/div/div[1]/div/button");
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("/html/body/div[4]/div/div/div[2]/div/div[1]/div/div[1]/div/button")));
+
+        //В фильтре ""Код формы"" вводим ""03.033""
+//        Select select = new Select(chromeDriver.findElement(By.xpath("//*[@id=\"filterCollapse\"]/div/div[1]/div[2]/div/div/select")));
+//        select.selectByValue(config.get("viewCode"));
+//        select.selectByIndex(3);
+        clickButtonJS("//*[@id=\"filterCollapse\"]/div/div[1]/div[2]/div/div/button");
+        List<WebElement> forms = chromeDriver.findElements(By.xpath("//*[@id=\"filterCollapse\"]/div/div[1]/div[2]/div/div/div/ul/li[.]/a"));
+        for (WebElement webElement : forms) {
+            if (webElement.getText().equals(config.get("viewCode"))) {
+                webElement.click();
+                wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"filterCollapse\"]/div/div[1]/div[2]/div/div/button/span[1]"),config.get("viewCode")));
+                break;
+            }
+        }
+        //в фильтре ""Наименование отчета вводим ""Годовой отчет"" (название нужно вынести в параметр)
+        clickButtonJS("//*[@id=\"filterCollapse\"]/div/div[2]/div[2]/div/div/button");
+        List<WebElement> templates = chromeDriver.findElements(By.xpath("//*[@id=\"filterCollapse\"]/div/div[2]/div[2]/div/div/div/ul/li[.]/a"));
+        for (WebElement webElement : templates) {
+            if (webElement.getText().equals(config.get("viewTemplate"))) {
+                webElement.click();
+                wait.until(ExpectedConditions.textToBe(By.xpath("//*[@id=\"filterCollapse\"]/div/div[2]/div[2]/div/div/button/span[1]"),config.get("viewTemplate")));
+                break;
+            }
+        }
+        //нажимаем ""Применить фильтр"""
+        clickButton("//*[@id=\"filterCollapse\"]/div/div[1]/div[1]/div");
+        //Для 1-го найденного отчета нажимаем "Скачать отчет"
+        chromeDriver.manage().timeouts().implicitlyWait(200,TimeUnit.MILLISECONDS);
+        clickButton("/html/body/div[4]/div/div/div[3]/div/div[1]/div[3]/div/div[2]/div/div/table/tbody/tr[1]/td[10]/div/button");
+        //Открываем отчет
+        try {
+            Thread.sleep(20000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        File report = lastModified("data/docs");
+        ExcelParser excelParser = new ExcelParser(report);
+        //На 1-м листе присутствует текст "С В О Д Н Ы Й   О Т Ч Е Т ", "По форме ФФСН № 3-связь на конец 2016 года"
+        Assert.assertTrue(excelParser.rowEqualsValue(0,"С В О Д Н Ы Й   О Т Ч Е Т    "));
+        Assert.assertTrue(excelParser.rowEqualsValue(4,"По форме ФФСН № 3-связь на конец 2016 года"));
+    }
+
 
     @AfterClass
     public void closeDriver() {
@@ -699,22 +997,26 @@ public class Smoke {
             chromeDriver.quit();
         }
     }
-    public void clickButton (String buttonXPath){
-        WebElement button =null;
+
+    public void clickButton(String buttonXPath) {
+        WebElement button = null;
         click:
-        while (true){
+        while (true) {
             try {
-                button= chromeDriver.findElementByXPath(buttonXPath);
-                button=wait.until(ExpectedConditions.elementToBeClickable(By.xpath(buttonXPath)));
+                button = chromeDriver.findElementByXPath(buttonXPath);
+                Actions actions = new Actions(chromeDriver);
+                actions.moveToElement(button);
+                actions.perform();
+                button = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(buttonXPath)));
                 button.click();
-                chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+                chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
                 break click;
-            }catch (WebDriverException e){
-                try{
+            } catch (WebDriverException e) {
+                try {
                     button.click();
-                    chromeDriver.manage().timeouts().implicitlyWait(300,TimeUnit.MILLISECONDS);
+                    chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
                     break click;
-                }catch (WebDriverException e1){
+                } catch (WebDriverException e1) {
                     e.printStackTrace();
                     continue click;
                 }
@@ -723,17 +1025,23 @@ public class Smoke {
         }
 
     }
-    public void clickButtonCSS (String CSS) {
+
+    public void clickButtonCSS(String CSS) {
         WebElement button = null;
         boolean staleElement = true;
         click:
         while (staleElement) {
             try {
                 button = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector(CSS)));
+                String scrollElementIntoMiddle = "var viewPortHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);"
+                        + "var elementTop = arguments[0].getBoundingClientRect().top;"
+                        + "window.scrollBy(0, elementTop-(viewPortHeight/2));";
+
+                ((JavascriptExecutor) chromeDriver).executeScript(scrollElementIntoMiddle, button);
                 button.click();
-                chromeDriver.manage().timeouts().implicitlyWait(300, TimeUnit.MILLISECONDS);
+                chromeDriver.manage().timeouts().implicitlyWait(1000, TimeUnit.MILLISECONDS);
                 staleElement = false;
-            } catch (WebDriverException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 staleElement = true;
 
@@ -741,13 +1049,32 @@ public class Smoke {
             }
         }
     }
+     void clickButtonJS(String xpath){
+        WebElement element = chromeDriver.findElement(By.xpath(xpath));
+        JavascriptExecutor executor = (JavascriptExecutor)chromeDriver;
+        executor.executeScript("arguments[0].click();", element);
+    }
+    public void sendKeysToInput(String inputXPath, String keys) {
+        circle:
+        while (true) {
+            WebElement input = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(inputXPath)));
+            String scrollElementIntoMiddle = "var viewPortHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);"
+                    + "var elementTop = arguments[0].getBoundingClientRect().top;"
+                    + "window.scrollBy(0, elementTop-(viewPortHeight/2));";
 
-    public void sendKeysToInput(String inputXPath, String keys){
-        WebElement input=wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(inputXPath)));
-        input.clear();
-        input.sendKeys(keys);
+            ((JavascriptExecutor) chromeDriver).executeScript(scrollElementIntoMiddle, input);
+            input.clear();
+            input.sendKeys(keys);
+            chromeDriver.manage().timeouts().implicitlyWait(500,TimeUnit.MILLISECONDS);
+            if (input.getAttribute("value").equals(keys)){
+                break circle;
+            }else {
+                continue circle;
+            }
+        }
 
     }
+
     void typeIntoFileInput(File file) {
         StringSelection s = new StringSelection(file.getAbsolutePath());
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(s, null);
@@ -767,6 +1094,20 @@ public class Smoke {
         robot.keyPress(java.awt.event.KeyEvent.VK_ENTER);
         robot.keyRelease(java.awt.event.KeyEvent.VK_ENTER);
     }
+
+    File lastModified(String directory){
+       File files[] = new File(directory).listFiles();
+       long max = Long.MIN_VALUE;
+       File res = null;
+       for(File file:files){
+           if(file.lastModified()>max){
+               res=file;
+               max=file.lastModified();
+           }
+       }
+       return res;
+    }
+
 
 
 }
