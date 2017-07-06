@@ -153,7 +153,7 @@ public class MailClient {
             Session session = Session.getInstance(props, null);
             Store store = session.getStore("imap");
             store.connect(host, name, password);
-
+//todo: убрать ошибку
             waiting:
             while (true) {
                 try {
@@ -182,6 +182,7 @@ public class MailClient {
                     continue waiting;
                 }
             }
+            store.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
