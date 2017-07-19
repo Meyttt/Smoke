@@ -7,7 +7,29 @@ import java.sql.SQLException;
  * Created by a.chebotareva on 17.05.2017.
  */
 public class Operator {
-    private String id, parent_id,external_code,gvc_code,full_name,short_name,inn,ogrn,okpo,okved,okato,oktmo,created,modified;
+    public String getId() {
+        return id;
+    }
+
+    private String id;
+
+    public String getParent_id() {
+        return parent_id;
+    }
+
+    private String parent_id;
+    private String external_code;
+    private String gvc_code;
+    private String full_name;
+    private String short_name;
+    private String inn;
+    private String ogrn;
+    private String okpo;
+    private String okved;
+    private String okato;
+    private String oktmo;
+    private String created;
+    private String modified;
     private boolean is_master;
     private String message;
     private boolean affiliates;

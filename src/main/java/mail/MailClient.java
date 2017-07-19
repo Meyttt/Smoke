@@ -176,7 +176,6 @@ public class MailClient {
                         continue waiting;
                     }
                 }catch (MessagingException e2){
-                    e2.printStackTrace();
                     store.close();
                     store.connect(host, name, password);
                     continue waiting;
